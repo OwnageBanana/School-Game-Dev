@@ -1,0 +1,29 @@
+
+h1{
+    color:#c4c0ba;
+}
+
+body{
+    background: #242424;
+}
+canvas {
+    margin: auto;
+}
+#Lone-Surivor{
+    margin: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table, td, th {
+    color:#c4c0ba;
+    border: 1px solid black;
+    padding: 5px;
+}
+
+th {
+    text-align: left;
+}

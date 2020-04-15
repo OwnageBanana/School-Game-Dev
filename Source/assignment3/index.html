@@ -1,0 +1,733 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>hello phaser!</title>
+    <!--phaser cdn-->
+    <script src="//cdn.jsdelivr.net/phaser/2.6.2/phaser.min.js"></script>
+    <!--bootstrap CDNs for js-->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+    <!--bootstrap CDNs for CSS-->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+
+    <!--custom classes-->
+    <script src="player.js"></script>
+    <script src="weapon.js"></script>
+    <script src="spawnmanager.js"></script>
+    <script src="levelmanager.js"></script>
+    <script src="boss.js"></script>
+
+
+</head>
+
+<body>
+
+    <div class="container text-center">
+        <h1>Lone Survivor</h1>
+        <br> </br>
+        <div class="row">
+            <div class="col-sm-2"></div>
+            <div class="col-sm-8 text-center" id="Lone-Surivor"></div>
+            <div class="col-sm-2">
+                <h4>Highscores</h1>
+                    <div id="highscore-table">
+                    </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+
+    <script type="text/javascript">
+        var game = new Phaser.Game(640, 800, Phaser.CANVAS, 'Lone-Surivor', {
+            preload: preload,
+            create: loadSounds,
+            update: update
+        });
+
+        //preload function for loading all of the assets in the game 
+        function preload() {
+            //audio
+            game.load.audio('explosion', 'assets/sounds/explosion.mp3');
+            game.load.audio('shoot', 'assets/sounds/shoot.mp3');
+            game.load.audio('theme', 'assets/sounds/theme.mp3');
+            //player sprites
+            game.load.spritesheet('player', 'assets/sprites/player.png', 58, 53);
+            game.load.image('bullet', 'assets/sprites/bullet.png');
+            game.load.image('player_shield', 'assets/sprites/player_shield.png');
+            game.load.spritesheet('explosion', 'assets/sprites/big_explosion.png', 64, 64);
+            game.load.image('bomb_explosion', 'assets/sprites/bomb_explosion.png');
+
+            //menu sprite
+            game.load.image('play_button', 'assets/sprites/play_button.png');
+            game.load.image('back_button', 'assets/sprites/back_button.png');
+            game.load.image('instructions_button', 'assets/sprites/instructions_button.png');
+            game.load.image('instructions', 'assets/sprites/instructions.png');
+            game.load.image('bomb_icon', 'assets/sprites/bomb_icon.png');
+
+            //enemy sprites
+            game.load.image('enemy1', 'assets/sprites/enemy1.png');
+            game.load.image('enemy2', 'assets/sprites/enemy2.png');
+            game.load.image('enemy3', 'assets/sprites/enemy3.png');
+            game.load.image('enemy4', 'assets/sprites/enemy4.png');
+            game.load.image('enemy_bullet', 'assets/sprites/enemy_bullet.png');
+
+            //boss sprites
+            game.load.spritesheet('helicopter', 'assets/sprites/helicopter.png', 100, 128);
+            game.load.image('gunship', 'assets/sprites/gunship.png');
+            game.load.image('gunship_gun', 'assets/sprites/gunship_gun.png');
+
+
+            //powerup sprites
+            game.load.image('fast', 'assets/sprites/fast_firing.png');
+            game.load.image('double', 'assets/sprites/double_firing.png');
+            game.load.image('spread', 'assets/sprites/spread_firing.png');
+            game.load.image('speed', 'assets/sprites/speed_boost.png');
+            game.load.image('life', 'assets/sprites/life.png');
+            game.load.image('shield', 'assets/sprites/shield.png');
+            game.load.image('bomb', 'assets/sprites/bomb.png');
+
+            //background sprite
+            game.load.image('background', 'assets/sprites/big_bg.png');
+
+
+
+        }
+
+        //game objects
+        var player;
+        var levelManager;
+        var cursors;
+        var spawnManager;
+        var explosions;
+
+        //background object
+        var background;
+
+        //menu elements
+        var startButton;
+        var instructions;
+        var instructionsButton;
+        var backButton;
+        var startText;
+
+        //music
+        var shoot;
+        var explosion;
+        var theme;
+
+        //game variables
+        var levelEndTime;
+        var level = 1;
+        var score = 0;
+        var isMenu;
+        var comboCount = 0;
+        var comboTimer = 0;
+        var bossFight = false;
+        var canProgress = false;
+        var bossesBeaten = 0;
+
+        //text elements on screen
+        var scoreText;
+        var stateText;
+        var comboText;
+        var progressText;
+        var bombsText;
+        var livesText;
+
+        //boss enemy
+        var boss;
+
+        //sound needs to be loaded before running the create function and update function 
+        function loadSounds() {
+            explosion = game.add.audio('explosion');
+            shoot = game.add.audio('shoot', 0.6);
+            theme = game.add.audio('theme', 0.4, true);
+            game.physics.arcade.isPaused = true;
+            game.sound.setDecodedCallback([explosion, shoot, theme], create, this);
+
+        }
+
+        //create function initalizes the games management classes and inital values and objects
+        function create() {
+
+            //initalizing the background
+            game.stage.backgroundColor = '#2d2d2d';
+            background = game.add.tileSprite(0, 0, 640, 800, 'background');
+
+            level = 1;
+
+            //initalizing the game management classes
+            spawnManager = new SpawnManager(640, 800);
+            levelManager = new LevelManager(level);
+            player = new Player(320, 600);
+
+            //initalizing space bar as player input
+            cursors = game.input.keyboard.createCursorKeys();
+            game.input.keyboard.addKeyCapture([Phaser.Keyboard.SPACEBAR]);
+
+            //  The score
+            scoreString = 'Score : ';
+            scoreText = game.add.text(10, 10, scoreString + score, {
+                font: '34px Arial',
+                fill: '#fff'
+            });
+            scoreText.visible = false;
+
+            //  The combo Text
+            comboText = game.add.text(10, 100, "", {
+                font: '48px Arial',
+                fill: '#fff'
+            });
+            comboText.visible = false;
+
+
+            //  Lives text
+            livesText = game.add.text(game.world.width - 110, 10, 'Lives : ', {
+                font: '34px Arial',
+                fill: '#fff'
+            });
+            livesText.visible = false;
+
+            bombsText = game.add.text(game.world.width - 120, 80, 'bombs: ', {
+                font: '34px Arial',
+                fill: '#fff'
+            });
+            bombsText.visible = false;
+
+
+            //  An explosion pool for enemies to explode with
+            explosions = game.add.group();
+            explosions.createMultiple(50, 'explosion');
+            explosions.forEach(addExplosion, this);
+
+            //initalizng the time until the current level ends
+            levelEndTime = levelManager.getLevelData().time * 1000;
+
+            //pause input and pause text/gameover text input button
+            pauseKey = this.input.keyboard.addKey(Phaser.Keyboard.P);
+            pauseKey.onDown.add(togglePause, this);
+
+            //state text to display various screens in the game
+            stateText = game.add.text(game.world.centerX, game.world.centerY, ' ', {
+                font: '84px Arial',
+                fill: '#fff'
+            });
+            stateText.anchor.setTo(0.5, 0.5);
+            stateText.visible = false;
+
+            //  progress text to show how soon until the game ends
+            progressText = game.add.text(game.world.centerX, 10, ' ', {
+                font: '34px Arial',
+                fill: '#fff'
+            });
+            progressText.anchor.setTo(0.5, 0);
+            progressKey = this.input.keyboard.addKey(Phaser.Keyboard.C);
+            progressKey.onDown.add(levelProgress, this);
+
+            //unpause game, play theme and show the menu
+            game.physics.arcade.isPaused = false;
+            theme.play();
+            isMenu = true;
+
+            //  menu screen text to display
+            startText = game.add.text(game.world.centerX, 100, 'Lone Survivor', {
+                font: '84px Arial',
+                fill: '#fff'
+            });
+            startText.anchor.setTo(0.5, 0);
+            startText.visible = true;
+            startButton = game.add.button(game.world.centerX, 250, "play_button", startGame, this, 0, 0, 0);
+            startButton.anchor.setTo(0.5, 0.5);
+
+            //instruction sprite and instuction button to show instructions. 
+            instructionsButton = game.add.button(game.world.centerX, 400, "instructions_button", toggleInstructions, this, 0, 0, 0);
+            instructionsButton.anchor.setTo(0.5, 0.5)
+            instructions = game.add.sprite(50, 50, 'instructions');
+
+            //instruction menu back button
+            backButton = game.add.button(320, 700, 'back_button', toggleInstructions, this, 0, 0, 0);
+            backButton.anchor.setTo(0.5, 0.5);
+            backButton.visible = false;
+            instructions.visible = false;
+
+        }
+
+        function toggleInstructions() {
+            instructions.visible = !instructions.visible;
+            backButton.visible = !backButton.visible;
+        }
+
+        //start game hide game elements and shows ones for gameplay
+        function startGame() {
+            isMenu = false;
+            startButton.visible = false;
+            instructionsButton.visible = false;
+            startText.visible = false;
+            scoreText.visible = true;
+            progressText.visible = true;
+            bombsText.visible = true;
+            livesText.visible = true;
+            player.nextLevel(320, 600);
+        }
+
+        //display next Level win screen
+        function levelWin() {
+
+            if (level == 3 && bossesBeaten < 1) {
+                boss = new Helicopter();
+                bossFight = true;
+                return;
+            }
+
+            if (level == 5 && bossesBeaten < 2) {
+                boss = new Gunship();
+                bossFight = true;
+                return;
+            }
+
+            if (level < 5) {
+                progressKey.onDown.add(levelProgress, this);
+
+                game.physics.arcade.isPaused = true;
+                score += level * 1000;
+                score += player.lives.countLiving() * 1000;
+
+                stateText.text = " you Beat \n level " + level + "! \n press C to  \n continue";
+                stateText.visible = true;
+                canProgress = true;
+            } else {
+                gameWin();
+            }
+        }
+
+        //progress when the player has won a level and presses C updates the game variables with the new level
+        function levelProgress() {
+            if (canProgress) {
+                canProgress = false;
+
+                if (level < 5) {
+                    game.physics.arcade.isPaused = false;
+                    stateText.visible = false;
+
+                    level = level + 1;
+                    spawnManager.nextLevel();
+                    levelManager.nextLevel(level);
+                    player.nextLevel(320, 600);
+                    stateText.visible = false;
+                    levelEndTime = levelManager.getLevelData().time * 1000 + game.time.now;
+                }
+                else {
+                    //if game is won, restart to menu
+                    restart();
+                }
+            }
+        }
+
+        //when the player has won the game, display the win screen and post their score to the DB
+        function gameWin() {
+            game.physics.arcade.isPaused = true;
+
+            score += level * 1000;
+            score += player.lives.countLiving() * 1000;
+
+            stateText.text = " you have \n SURVIVED \n Congratulations \n press c to restart";
+            stateText.visible = true;
+
+        }
+
+        //Pause the game 
+        function togglePause() {
+
+            if (isMenu) return;
+
+            game.physics.arcade.isPaused = (game.physics.arcade.isPaused) ? false : true;
+
+            //display pause messge
+            stateText.text = " GAME PAUSED";
+            stateText.visible = !stateText.visible;
+        }
+
+        //adds an explosion ot each enemy
+        function addExplosion(enemy) {
+            enemy.anchor.x = 0.5;
+            enemy.anchor.y = 0.5;
+            enemy.animations.add('explosion');
+        }
+
+        //update function for the main game loop
+        //updates variables and all game entities
+        function update() {
+
+
+            //if the game isn't paused do the normal game stuff
+            if (!game.physics.arcade.isPaused) {
+
+                //move the background if the game isn't paused
+                background.tilePosition.y += 2;
+
+                //if hn menu make the just have player auto move 
+                if (isMenu) {
+                    player.autoMove();
+                    levelEndTime = levelManager.getLevelData().time * 1000 + game.time.now;
+
+                } else {
+
+
+                    if (comboTimer < game.time.now) {
+                        score += 50 * comboCount;
+                        scoreText.text = scoreString + score;
+                        comboCount = 0;
+                        comboText.visible = false;
+                    }
+
+                    //display time remaining
+                    displayTime = parseInt((levelEndTime - game.time.now) / 1000);
+                    displayTime < 0 ? displayTime = 0 : displayTime;
+                    progressText.text = "T-" + displayTime;
+
+                    // colliding bullets with enemies
+                    spawnManager.checkCollision(player.getBullets(), bulletCollisionHandler);
+
+                    //colliding bomb with enemies
+                    if (player.getIsDetonating()) {
+                        spawnManager.checkCollision(player.getBomb(), bombCollisionHandler);
+                    }
+
+                    //  Run collision on player from enemies
+                    spawnManager.checkCollision(player.getPlayer(), enemyHitsPlayer);
+
+                    //  Run collision on player from enemies' bullets
+                    spawnManager.checkBulletCollision(player.getPlayer(), enemyHitsPlayer);
+
+                    //check the player against pickups
+                    levelManager.checkCollision(player.getPlayer(), pickupCollisionHandler);
+
+
+                    //update the enemy positions
+                    spawnManager.update();
+
+                    //update the player position
+                    player.update();
+
+                    //only run boss collision functions if a boss is present
+                    if (boss && boss.alive) {
+                        boss.update(player.player.x, player.player.y);
+                        boss.checkCollision(player.getBullets(), bossCollisionHandler);
+                        boss.checkCollision(player.getPlayer(), bossHitsPlayer);
+                        boss.checkBulletCollision(player.getPlayer(), enemyHitsPlayer);
+                        //if the boss has no hp left, run the kill function, cleaning it up
+                        if (!boss.alive)
+                            boss.kill();
+                    }
+
+
+                    //checking the time until a new spawn should be created
+                    if (levelManager.getNextSpawn() < game.time.now) {
+                        levelManager.setNextSpawn();
+                        //getting info on what enemies to spawn
+                        var levelData = levelManager.getLevelData();
+                        var numSpawns = game.rnd.integerInRange(1, levelData.numSpawns);
+                        //for number of spawns to create add spawns within parameters specified for the particular level the player is on
+                        for (i = 0; i < numSpawns; i++)
+                            spawnManager.addSpawn(game.rnd.integerInRange(32, game.world.width - 32),
+                                game.rnd.integerInRange(levelData.spawnRange / 2, levelData.spawnRange),
+                                game.rnd.integerInRange(0, levelData.enemyRange));
+                    }
+                    //if the time is up, the player has won the level
+                    if (levelEndTime < game.time.now && !bossFight) {
+
+                        levelWin();
+                    }
+                }
+
+            }
+        }
+
+        //  Called if the bullet hits one of the enemy sprites
+        function bulletCollisionHandler(bullet, enemy) {
+
+            if (enemy.alive) {
+                bullet.kill();
+                enemy.kill();
+                comboCount++;
+                comboTimer = game.time.now + 2000;
+                comboText.text = comboCount + "X \nCOMBO";
+                comboText.visible = true;
+
+                var drop = levelManager.getDrop(enemy.body.x, enemy.body.y);
+
+                var e = explosions.getFirstExists(false);
+                e.reset(enemy.body.x, enemy.body.y);
+                e.play('explosion', 30, false, true);
+
+                //  Increase the score
+                score += 50;
+                scoreText.text = scoreString + score;
+            }
+        }
+
+        //  Called if the bullet hits one of the enemy sprites
+        function bombCollisionHandler(bomb, enemy) {
+
+            if (enemy.alive) {
+                enemy.kill();
+                comboCount++;
+                comboTimer = game.time.now + 2000;
+                comboText.text = comboCount + "X \nCOMBO";
+                comboText.visible = true;
+
+                var drop = levelManager.getDrop(enemy.body.x, enemy.body.y);
+
+                var e = explosions.getFirstExists(false);
+                e.reset(enemy.body.x, enemy.body.y);
+                e.play('explosion', 30, false, true);
+
+                //  Increase the score
+                score += 50;
+                scoreText.text = scoreString + score;
+            }
+        }
+
+        //  Called if the player hits a pickup
+        function pickupCollisionHandler(playerSprite, pickup) {
+
+            pickup.kill();
+            //if it was a speed pickup speed the player up, otherwise change the player's weapon
+            switch (pickup.powerup) {
+                case (4):
+                    player.increaseSpeed();
+                    break;
+
+                case (5):
+                    player.addLife();
+                    break;
+
+                case (6):
+                    player.addShield();
+                    break;
+
+                case (7):
+                    player.addBomb();
+                    break;
+
+                default:
+                    player.getWeapon().setPowerup(pickup.powerup);
+                    break;
+            }
+            //  Increase the score
+            score += 50;
+            scoreText.text = scoreString + score;
+        }
+
+        //used for enemy bullets and enemy ships
+        function enemyHitsPlayer(playerSprite, hitBy) {
+
+            //if the player isn't in their invul window perform collision action
+            if (player.getLastHit() + player.getInvulTime() < game.time.now) {
+
+                //play explosion sound
+                explosion.play();
+                //reset invul time
+                player.setLastHit();
+
+                //destroy the thing that hit the player
+                hitBy.kill();
+
+                if (player.hasShield) {
+                    player.removeShield();
+                } else {
+                    //remove a life
+                    live = player.lives.getFirstAlive();
+                    if (live) {
+                        live.kill();
+                    }
+
+                    //draw an explosion animation
+                    var e = explosions.getFirstExists(false);
+                    e.reset(hitBy.body.x, hitBy.body.y);
+                    e.play('explosion', 30, false, true);
+
+
+                    // When the player dies
+                    if (player.lives.countLiving() < 1) {
+                        playerSprite.kill();
+
+                        stateText.text = " GAME OVER \n Click to restart";
+                        stateText.visible = true;
+                        progressText.visible = false;
+                        //the "click to restart" handler
+                        game.input.onTap.addOnce(restart, this);
+                    }
+                }
+            }
+        }
+
+        //used for boss contacting  the player character
+        function bossHitsPlayer(playerSprite, hitBy) {
+
+            //if the player isn't in their invul window perform collision action
+            if (player.getLastHit() + player.getInvulTime() < game.time.now) {
+
+                //play explosion sound
+                explosion.play();
+                //reset invul time
+                player.setLastHit();
+
+                if (player.hasShield) {
+                    player.removeShield();
+                } else {
+                    //remove a life
+                    live = player.lives.getFirstAlive();
+                    if (live) {
+                        live.kill();
+                    }
+
+                    // When the player dies
+                    if (player.lives.countLiving() < 1) {
+                        playerSprite.kill();
+
+                        stateText.text = " GAME OVER \n Click to restart";
+                        stateText.visible = true;
+                        progressText.visible = false;
+                        //the "click to restart" handler
+                        game.input.onTap.addOnce(restart, this);
+                    }
+                }
+            }
+        }
+
+        //  Called if the bullet hits one of the enemy sprites
+        function bossCollisionHandler(bossSprite, bullet) {
+
+            bullet.kill();
+            boss.removeHitpoint();
+            comboCount++;
+            comboTimer = game.time.now + 2000;
+            comboText.text = comboCount + "X \nCOMBO";
+            comboText.visible = true;
+
+
+            var e = explosions.getFirstExists(false);
+            e.reset(bullet.body.x, bullet.body.y);
+            e.play('explosion', 30, false, true);
+
+            if (boss.getHitpoints() <= 0) {
+                bossSprite.kill();
+                var e = explosions.getFirstExists(false);
+                e.reset(bossSprite.body.x, bossSprite.body.y);
+                e.scale.x = 3;
+                e.scale.y = 3;
+                e.play('explosion', 20, false, true);
+                boss.alive = false;
+
+                score += boss.getPoints();
+                scoreText.text = scoreString + score;
+                bossFight = false;
+                bossesBeaten += 1;
+                levelWin();
+            }
+        }
+
+
+        //restarts the game
+        function restart() {
+
+            //restarting all the game variables nessisary to have the game restart
+            game.physics.arcade.isPaused = false;
+            stateText.visible = false;
+            progressText.visible = false;
+            startButton.visible = true;
+            startText.visible = true;
+            instructionsButton.visible = true;
+            bombsText.visible = false;
+            livesText.visible = false;
+            comboText.visible = false;
+
+            //adding highscore to database
+            addHighscoreData();
+
+            //game variables reset
+            level = 1;
+            score = 0;
+            comboCount = 0;
+            comboTimer = 0;
+            bossFight = false;
+            canProgress = false;
+            bossesBeaten = 0;
+
+            spawnManager.nextLevel(level);
+            levelManager.nextLevel(level);
+            player.player.revive();
+            player.lives.removeAll();
+            player.bombIcons.removeAll();
+            player.player.y = 600;
+            player.reset();
+            if (boss)
+                boss.kill();
+            boss = undefined;
+            levelEndTime = levelManager.getLevelData().time * 1000 + game.time.now;
+            scoreText.text = "Score: " + score;
+            scoreText.visible = false;
+
+            isMenu = true;
+
+        }
+
+
+        //highscore function to get the list of highscores
+        function getHighscoreData() {
+            if (window.XMLHttpRequest) {
+                // code for modern browsers
+                xmlhttp = new XMLHttpRequest();
+            } else {
+                // code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            xmlhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    $("#highscore-table").innerHTML = this.responseText;
+                    document.getElementById("highscore-table").innerHTML = this.responseText;
+                }
+            };
+            xmlhttp.open("GET", "highscorequery.php", true);
+            xmlhttp.send();
+        }
+        //get the highscores to start
+        getHighscoreData();
+
+        //used to insert a new row into the database
+        function addHighscoreData() {
+            if (window.XMLHttpRequest) {
+                // code for modern browsers
+                xmlhttp = new XMLHttpRequest();
+            } else {
+                // code for IE6, IE5
+                xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+            }
+            xmlhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    //once inserted, get the scores to display
+                    getHighscoreData();
+                }
+            };
+            xmlhttp.open("GET", "inserthighscore.php?score=" + score + "&level=" + level, true);
+            xmlhttp.send();
+        }
+    </script>
+
+</body>
+
+</html>
